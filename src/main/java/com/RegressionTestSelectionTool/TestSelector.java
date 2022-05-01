@@ -1,5 +1,6 @@
 package com.RegressionTestSelectionTool;
 
+import com.RegressionTestSelectionTool.CodeSmellsDetector.CodeSmellsDetector;
 import com.RegressionTestSelectionTool.utils.OSGetter;
 import com.RegressionTestSelectionTool.utils.SelectionTechniqueEnum;
 import com.RegressionTestSelectionTool.xmlfields.dependencies.*;
@@ -13,6 +14,7 @@ import com.strobel.decompiler.DecompilerSettings;
 import com.strobel.decompiler.PlainTextOutput;
 import com.thoughtworks.xstream.XStream;
 import jdk.jshell.spi.ExecutionControl.NotImplementedException;
+import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,6 +46,9 @@ public class TestSelector {
     private DependenciesField initialVersionTestsClassDependencies;
     private final Set<String> selectedTestClasses = new HashSet<>();
     private final Set<String> newClassesFromNewPackages = new HashSet<>();
+    private Set<String> classesWithViolations = new HashSet<>();
+
+    private CodeSmellsDetector smellsDetector;
 
     public  void main(String[] args) {}
 
@@ -51,7 +56,7 @@ public class TestSelector {
             String initialProjectVersionDirectoryPath,
             String modifiedProjectVersionDirectoryPath,
             SelectionTechniqueEnum selectionTechnique
-    ) {
+    ) throws NotImplementedException {
         this.initialProjectVersionDirectoryPath = initialProjectVersionDirectoryPath;
         this.modifiedProjectVersionDirectoryPath = modifiedProjectVersionDirectoryPath;
         this.selectionTechnique = selectionTechnique;
@@ -62,15 +67,38 @@ public class TestSelector {
             String modifiedProjectVersionDirectoryPath,
             SelectionTechniqueEnum selectionTechnique,
             String dependencyFinderHomePath
-    ) {
+    ) throws NotImplementedException {
         this(initialProjectVersionDirectoryPath, modifiedProjectVersionDirectoryPath, selectionTechnique);
         this.dependencyFinderHomePath = dependencyFinderHomePath;
+        this.initializeSmellsDetector(initialProjectVersionDirectoryPath, modifiedProjectVersionDirectoryPath, new ArrayList<>());
+    }
+
+    public TestSelector(
+            String initialProjectVersionDirectoryPath,
+            String modifiedProjectVersionDirectoryPath,
+            SelectionTechniqueEnum selectionTechnique,
+            String dependencyFinderHomePath,
+            ArrayList<String> selectedViolations
+    ) throws NotImplementedException {
+        this(initialProjectVersionDirectoryPath, modifiedProjectVersionDirectoryPath, selectionTechnique);
+        this.dependencyFinderHomePath = dependencyFinderHomePath;
+        this.initializeSmellsDetector(initialProjectVersionDirectoryPath, modifiedProjectVersionDirectoryPath, selectedViolations);
+    }
+
+    public void initializeSmellsDetector(
+            String initialProjectVersionDirectoryPath,
+            String modifiedProjectVersionDirectoryPath,
+            ArrayList<String> selectedViolations) throws NotImplementedException {
+        this.smellsDetector = new CodeSmellsDetector(modifiedProjectVersionDirectoryPath, selectedViolations);
     }
 
     public List<String> getSelectedClasses() throws NotImplementedException {
         checkDependencyFinderHomePathRequirement();
-        setTempXMLOutputPaths();
+        setTempXMLOutputPaths(); // pode ir pro construtor
 
+        classesWithViolations = this.smellsDetector.getClassWithCodeViolationsList();
+
+        // classesWithViolations = new HashSet<String>();
         // First Step
         setClassesDependenciesForModifiedVersion();
         setClassesDependenciesForTestsFromInitialVersion();
@@ -80,10 +108,10 @@ public class TestSelector {
 
         // Third Step
         if (selectionTechnique.equals(SelectionTechniqueEnum.CLASS_FIREWALL)) {
-            setClassesInboundsFromDifferences(false);
+            setClassesInboundsFromTechniqueSeeds(false);
         }
         else if (selectionTechnique.equals(SelectionTechniqueEnum.CHANGE_BASED)){
-            setClassesInboundsFromDifferences(true);
+            setClassesInboundsFromTechniqueSeeds(true);
         }
 
         // Fourth Step
@@ -92,6 +120,22 @@ public class TestSelector {
         deleteTempFiles();
 
         return selectedTestClasses.stream().toList();
+    }
+
+    public int numberOfPossibleSelectedTestClasses() {
+        final Set<String> numberOfClassesInModifiedVersion = new HashSet<String>();
+
+        if (initialVersionTestsClassDependencies.packages != null) {
+            initialVersionTestsClassDependencies.packages.forEach(testPackageField ->
+            testPackageField.classes.forEach(classField -> {
+                    var name = classField.name.split("\\$")[0];
+                    if (name.contains("Test")) {
+                        numberOfClassesInModifiedVersion.add(name);
+                    }
+                 }));
+        }
+
+        return numberOfClassesInModifiedVersion.size();
     }
 
     private void getSelectedTestCasesUsingClassesInbounds() {
@@ -103,9 +147,11 @@ public class TestSelector {
                         })));
     }
 
-    private void setClassesInboundsFromDifferences(boolean stopAtFirstLevel) {
+    private void setClassesInboundsFromTechniqueSeeds(boolean stopAtFirstLevel) {
         getModifiedClassesInbounds(stopAtFirstLevel);
         getNewClassesInbounds(stopAtFirstLevel);
+
+        //getClassesWithViolationsInbounds(stopAtFirstLevel);
     }
 
     private void getModifiedClassesInbounds(boolean stopAtFirstLevel) {
@@ -131,6 +177,15 @@ public class TestSelector {
             newClassesFromNewPackages.forEach(newClassName -> {
                 modifiedAndNewClassInbounds.add(newClassName);
                 getClassInboundsForClass(newClassName, stopAtFirstLevel);
+            });
+        }
+    }
+
+    private void getClassesWithViolationsInbounds(boolean stopAtFirstLevel) {
+        if (classesWithViolations != null && !classesWithViolations.isEmpty()) {
+            classesWithViolations.forEach(classWithViolation -> {
+                modifiedAndNewClassInbounds.add(classWithViolation);
+                getClassInboundsForClass(classWithViolation, stopAtFirstLevel);
             });
         }
     }
@@ -401,7 +456,7 @@ public class TestSelector {
     private void setTempXMLOutputPaths() {
         String mainClassFolderPath = getMainClassFolderPath();
 
-        tempXMLOutputPaths = new ArrayList<>();
+        tempXMLOutputPaths = new ArrayList<>(); 
         for (String tempXMLOutputFilename: tempXMLOutputFilenames) {
             tempXMLOutputPaths.add(Paths.get(mainClassFolderPath, tempXMLOutputFilename).toAbsolutePath().toString());
         }
