@@ -1,0 +1,1 @@
+[perf.ConcurrencyReadTest, com.fasterxml.jackson.test.BaseTest]
