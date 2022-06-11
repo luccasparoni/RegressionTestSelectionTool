@@ -19,7 +19,7 @@
             <artifactId>RegressionTestSelectionTool</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>system</scope>
-            <systemPath>/home/luccasparoni/Documents/TCC/RegressionTestSelectionTool/target/RTST-jar-with-dependencies.jar</systemPath>
+            <systemPath>"path-to-the-RTST-jar-file"</systemPath>
         </dependency>
     </dependencies>
 </project>
