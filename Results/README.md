@@ -3,7 +3,7 @@
 Here are all the results obtained using the 'Experiment' script of this project. In each file we have all the names of the test classes tat were selected.
 Also, the file naming follow a convention:
 
-(ProjectName)_[(List Of All Smells Selected)]_(Number of selected Classes)_of_(Total number of classes).txt
+(ProjectName)\_[(List Of All Smells Selected)]\_(Number of selected Classes)\_of\_(Total number of classes).txt
 
 So, for project Cli, using GodClass and Long Method smells, with 10 of 100 classes selected we would have:
 
