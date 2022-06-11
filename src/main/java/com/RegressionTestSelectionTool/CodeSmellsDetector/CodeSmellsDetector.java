@@ -165,6 +165,11 @@ public class CodeSmellsDetector {
     private String getPmdRulesetPath() {
         if (selectedViolationsTypes.isEmpty()) 
             return "rulesets/java/quickstart.xml";
+        
+        // if(selectedViolationsTypes.contains("Comments")){
+        //     selectedViolationsTypes.clear();
+        //     return "/home/luccasparoni/Documents/TCC/rulesets/nocomments.xml";
+        // }
 
         var rulesetsFactory = new PmdXmlRulesetFactory(this.selectedViolationsTypes);
         return rulesetsFactory.buildXmlRuleset(getProjectPath());

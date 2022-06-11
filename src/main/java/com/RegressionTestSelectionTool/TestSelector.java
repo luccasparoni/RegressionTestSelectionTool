@@ -112,6 +112,10 @@ public class TestSelector {
         }
         else if (selectionTechnique.equals(SelectionTechniqueEnum.CHANGE_BASED)){
             setClassesInboundsFromTechniqueSeeds(true);
+        } else if (selectionTechnique.equals(SelectionTechniqueEnum.CLASS_FIREWALL_ONLY_SMELLS)){
+            setClassesInboundsFromTechniqueSeeds(true);
+        } else if (selectionTechnique.equals(SelectionTechniqueEnum.CLASS_FIREWALL_WITH_SMELLS)){
+            setClassesInboundsFromTechniqueSeeds(true);
         }
 
         // Fourth Step
@@ -122,20 +126,30 @@ public class TestSelector {
         return selectedTestClasses.stream().toList();
     }
 
-    public int numberOfPossibleSelectedTestClasses() {
+    public Set<String> numberOfPossibleSelectedTestClasses() {
         final Set<String> numberOfClassesInModifiedVersion = new HashSet<String>();
 
         if (initialVersionTestsClassDependencies.packages != null) {
             initialVersionTestsClassDependencies.packages.forEach(testPackageField ->
             testPackageField.classes.forEach(classField -> {
+                var shouldCountAsTestCase = false;
+                if(initialProjectVersionDirectoryPath.contains("Xml"))
+                    shouldCountAsTestCase = classField.name.contains("Test");
+                else if(initialProjectVersionDirectoryPath.contains("Time") || initialProjectVersionDirectoryPath.contains("Jackson")) {
+                    shouldCountAsTestCase = classField.name.contains(".Test");
+                } else {
+                    shouldCountAsTestCase = classField.name.contains("Test\\$") || classField.name.endsWith("Test");
+                }
+
+                if (shouldCountAsTestCase) {
                     var name = classField.name.split("\\$")[0];
-                    if (name.contains("Test")) {
-                        numberOfClassesInModifiedVersion.add(name);
-                    }
-                 }));
+                    numberOfClassesInModifiedVersion.add(name);
+                    
+                }
+            }));
         }
 
-        return numberOfClassesInModifiedVersion.size();
+        return numberOfClassesInModifiedVersion;
     }
 
     private void getSelectedTestCasesUsingClassesInbounds() {
@@ -148,10 +162,16 @@ public class TestSelector {
     }
 
     private void setClassesInboundsFromTechniqueSeeds(boolean stopAtFirstLevel) {
-        getModifiedClassesInbounds(stopAtFirstLevel);
-        getNewClassesInbounds(stopAtFirstLevel);
-
-        //getClassesWithViolationsInbounds(stopAtFirstLevel);
+        if (selectionTechnique.equals(SelectionTechniqueEnum.CLASS_FIREWALL) || (selectionTechnique.equals(SelectionTechniqueEnum.CHANGE_BASED))) {
+            getModifiedClassesInbounds(stopAtFirstLevel);
+            getNewClassesInbounds(stopAtFirstLevel);
+        } else if (selectionTechnique.equals(SelectionTechniqueEnum.CLASS_FIREWALL_ONLY_SMELLS)){
+            getClassesWithViolationsInbounds(stopAtFirstLevel);
+        } else if (selectionTechnique.equals(SelectionTechniqueEnum.CLASS_FIREWALL_WITH_SMELLS)){
+            getClassesWithViolationsInbounds(stopAtFirstLevel);
+            getModifiedClassesInbounds(stopAtFirstLevel);
+            getNewClassesInbounds(stopAtFirstLevel);
+        }
     }
 
     private void getModifiedClassesInbounds(boolean stopAtFirstLevel) {
