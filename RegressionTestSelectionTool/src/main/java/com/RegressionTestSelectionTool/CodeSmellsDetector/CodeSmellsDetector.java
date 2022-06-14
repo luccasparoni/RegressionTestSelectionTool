@@ -21,11 +21,6 @@ import java.util.List;
 import java.util.Set;
 
 public class CodeSmellsDetector {
-    // what needs to be done:
-    // get the file names, plus the xml rules [v]
-    // execute the PMD via CLI [v]
-    // get the results [v] - saved on a tempfile
-    // in some undefined way, filter the results from the PMD []
 
     private String projectDirectoryPath;
     private final List<String> tempXMLOutputFilenames = Arrays.asList(
@@ -76,8 +71,7 @@ public class CodeSmellsDetector {
 
     private String getPmdCliCommand(String projectVersionDirectoryPath, String reportFileDirectoryPath) throws NotImplementedException {
         if (OSGetter.isWindows()) {
-            throw new NotImplementedException("Your Operational System is not supported yet");
-            // will fix that
+            return ".\\pmd.bat -d " + projectVersionDirectoryPath + " -f xml -R "+ this.pmdRulesetPath + " --report-file " + reportFileDirectoryPath;
         } else if (OSGetter.isUnix()) {
             return "run.sh pmd -d " + projectVersionDirectoryPath + " -f xml -R "+ this.pmdRulesetPath + " --report-file " + reportFileDirectoryPath;
         } else {
